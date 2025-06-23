@@ -228,7 +228,7 @@ onMounted(async () => {
   try {
     // NOTE: ganti API/endpoint jadi endpoint admin-history-ALL (data join ke user/user_input/gor/history) 
     // atau bentuk apapun asalkan datanya ada user, waktu, kota, provinsi, hasil ranking setiap history.
-    const { data } = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/history-all')
+    const { data } = await axios.get('/api/admin/history-all')
     // Data contoh: [{ user_input_id, waktu_submit, user_id, user_nama, kota, provinsi, rekomendasi: [ ...{id_gor, nama_gor, skor, ranking} ] }]
 
     // "flatHistory" diharuskan = satu array semua submit seluruh user

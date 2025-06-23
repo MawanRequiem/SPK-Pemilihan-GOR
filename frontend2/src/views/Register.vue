@@ -137,7 +137,7 @@ const handleRegister = async () => {
   }
 
   try {
-    await axios.post('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/register', {
+    await axios.post('/api/register', {
       nama_lengkap: nama.value,
       email: email.value,
       password: password.value,

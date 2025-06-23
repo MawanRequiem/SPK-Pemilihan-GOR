@@ -14,7 +14,7 @@ const app = express()
 
 app.use(helmet())
 app.use(cors({
-  origin: [ process.env.FRONTEND_URL, 'https://eligor.web.id', 'http://localhost:5174'],
+  origin: [ process.env.FRONTEND_URL, 'https://eligor.web.id', 'http://localhost:5174', "16.176.221.220"],
   credentials: true
 }));
 app.use(express.json({ limit: '1mb' }))
@@ -30,6 +30,6 @@ app.use('/api/rekomendasi', rekomendasiRoutes)
 app.use('/api/riwayat', historyRoutes)
 
 const PORT = process.env.PORT || 8080
-app.listen(PORT, () => {
-  console.log('Server aktif di http://localhost:' + PORT)
-})
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('Server running on port 3000');
+});

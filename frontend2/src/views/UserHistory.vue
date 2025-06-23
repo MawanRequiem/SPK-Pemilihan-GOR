@@ -383,7 +383,7 @@ const lastSearchDate = computed(() => {
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/riwayat/${userId}`)
+    const res = await axios.get(`/api/riwayat/${userId}`)
     history.value = res.data.history
   } catch (err) {
     toast.error('Gagal memuat histori')

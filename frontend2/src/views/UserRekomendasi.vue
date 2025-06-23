@@ -486,7 +486,7 @@ const customJarak = ref(null)
 onMounted(async () => {
   if (!userId) return router.push('/login')
   try {
-    const res = await axios.get(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/${userId}`)
+    const res = await axios.get(`/api/${userId}`)
     userProfile.value = res.data
     await loadGOR()
   } catch (error) {
@@ -499,7 +499,7 @@ onMounted(async () => {
 
 const loadGOR = async () => {
   try {
-    const res = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/gor')
+    const res = await axios.get('/api/admin/gor')
     gorList.value = res.data
     await enrichJarak()
   } catch (error) {
@@ -529,7 +529,7 @@ const enrichJarak = async () => {
         continue
       }
 
-      const r = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/maps/distance', {
+      const r = await axios.get('/api/maps/distance', {
         params: { 
           originLat: lat, 
           originLng: lng, 
@@ -664,7 +664,7 @@ const hitungRekomendasi = async () => {
       gorData: validatedData
     })
 
-    const r = await axios.post('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/rekomendasi', {
+    const r = await axios.post('/api/rekomendasi', {
       user_id: userId,
       metodeJarak: 'otomatis',
       waktuMain: { hari: hari.value, jam: parseInt(jam.value) },
