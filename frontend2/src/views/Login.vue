@@ -114,7 +114,7 @@ const router = useRouter()
 onMounted(() => { AOS.init() })
 const handleLogin = async () => {
   try {
-    const { data } = await axios.post('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/login', {
+    const { data } = await axios.post('/api/login', {
       email: email.value,
       password: password.value
     })

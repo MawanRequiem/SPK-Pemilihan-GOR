@@ -208,7 +208,7 @@ watch(searchQuery, async (val) => {
     return
   }
   try {
-    const res = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/maps/geocode', {
+    const res = await axios.get('/api/maps/geocode', {
       params: { query: val }
     })
     hasilPencarian.value = res.data.results || []
@@ -220,7 +220,7 @@ watch(searchQuery, async (val) => {
 onMounted(async () => {
   if (!userId) return router.push('/login')
   try {
-    const res = await axios.get(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/${userId}`)
+    const res = await axios.get(`/api/${userId}`)
     user.value = res.data
     setTimeout(initMap, 500) // better delay to ensure dom ready
   } catch (err) {
@@ -266,7 +266,7 @@ const pilihLokasi = (lokasi) => {
 
 const updateProfile = async () => {
   try {
-    await axios.patch(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/update/${userId}`, user.value)
+    await axios.patch(`/api/update/${userId}`, user.value)
     toast.success('Profil berhasil diperbarui!')
   } catch (err) {
     toast.error('Gagal update: ' + err.response?.data?.error)
@@ -277,7 +277,7 @@ const ubahPassword = async () => {
   if (password.value.new1 !== password.value.new2)
     return toast.error('Konfirmasi password tidak cocok')
   try {
-    await axios.patch(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/password/${userId}`, {
+    await axios.patch(`/api/password/${userId}`, {
       oldPassword: password.value.old,
       newPassword: password.value.new1
     })

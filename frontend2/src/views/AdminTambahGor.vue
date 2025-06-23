@@ -350,7 +350,7 @@ const createdBy = admin.user_id || null
 const submitForm = async () => {
   try {
     if (!createdBy) return toast.error('Admin tidak dikenali')
-    await axios.post('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/gor/tambahgor', {
+    await axios.post('/api/admin/gor/tambahgor', {
       nama: nama.value,
       rating: rating.value,
       hargaSewa: hargaSewa.value,

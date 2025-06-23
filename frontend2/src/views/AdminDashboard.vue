@@ -714,7 +714,7 @@ const formatDate = (dateString) => {
 
 const fetchGOR = async () => {
   try {
-    const res = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/gor')
+    const res = await axios.get('/api/admin/gor')
     daftarGOR.value = res.data || []
   } catch (err) {
     console.error('Gagal memuat GOR:', err)
@@ -725,7 +725,7 @@ const fetchGOR = async () => {
 
 const fetchTotalUsers = async () => {
   try {
-    const res = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/total-users')
+    const res = await axios.get('/api/admin/total-users')
     totalUsers.value = res.data.total || 0
   } catch (err) {
     console.error('Gagal memuat jumlah user:', err)
@@ -917,7 +917,7 @@ const updateGOR = async () => {
       kantin_items: editForm.value.checklist.kantin
     };
     
-    await axios.put(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/gor/${editForm.value.id_gor}`, payload);
+    await axios.put(`/api/admin/gor/${editForm.value.id_gor}`, payload);
     
     // Update local data
     const index = daftarGOR.value.findIndex(gor => gor.id_gor === editForm.value.id_gor);
@@ -946,7 +946,7 @@ const deleteGOR = async (id) => {
   if (!confirm('Yakin ingin menghapus GOR ini?')) return
   
   try {
-    await axios.delete(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/gor/${id}`)
+    await axios.delete(`/api/admin/gor/${id}`)
     daftarGOR.value = daftarGOR.value.filter(gor => gor.id_gor !== id)
     alert('GOR berhasil dihapus!')
   } catch (err) {
@@ -957,7 +957,7 @@ const deleteGOR = async (id) => {
 
 const fetchDSSStats = async () => {
   try {
-    const res = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/dss-stats')
+    const res = await axios.get('/api/admin/dss-stats')
     totalDSSUsage.value = res.data.total || 0
     drawChart(res.data.daily || [])
   } catch (err) {

@@ -467,7 +467,7 @@ const setDateTime = () => {
 
 const fetchSurvey = async () => {
   try {
-    const res = await axios.get(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/preferensi/${userId}`)
+    const res = await axios.get(`/api/preferensi/${userId}`)
     if (res.data.found) {
       sudahSurvey.value = true
       const data = res.data.data
@@ -489,7 +489,7 @@ const fetchSurvey = async () => {
 
 const fetchRanking = async () => {
   try {
-    const res = await axios.get(`https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/rekomendasi/ranking/${userId}`)
+    const res = await axios.get(`/api/rekomendasi/ranking/${userId}`)
     if (res.data && res.data.ranking) {
       lastRanking.value = res.data.ranking
       lastRankingDate.value = res.data.tanggal
@@ -501,7 +501,7 @@ const fetchRanking = async () => {
 
 const fetchGORList = async () => {
   try {
-    const res = await axios.get('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/admin/gor')
+    const res = await axios.get('/api/admin/gor')
     gorList.value = Array.isArray(res.data) ? res.data : res.data.data || []
     totalGOR.value = res.data.length
     totalSearches.value = res.data.reduce((acc, cur) => acc + (cur.dipilih || 0), 0)
@@ -555,7 +555,7 @@ const preferensiDisplay = computed(() => {
 const submitSurvey = async () => {
   try {
     const payload = { user_id: userId, ...jawaban.value }
-    const res = await axios.post('https://eligo-gor-backend-1013400068110.asia-east1.run.app/api/preferensi', payload)
+    const res = await axios.post('/api/preferensi', payload)
     toast.success(res.data.message || 'Preferensi berhasil disimpan')
     showModal.value = false
     fetchSurvey()
