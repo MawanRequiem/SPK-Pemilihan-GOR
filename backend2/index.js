@@ -2,6 +2,9 @@ const express = require('express')
 const cors = require('cors')
 const helmet = require('helmet')
 const rateLimit = require('express-rate-limit')
+
+const cookieParser = require('cookie-parser')
+
 require('dotenv').config()
 
 const userRoutes = require('./routes/user')
@@ -14,10 +17,11 @@ const app = express()
 
 app.use(helmet())
 app.use(cors({
-  origin: [ process.env.FRONTEND_URL, 'https://eligor.web.id', 'http://localhost:5174', "16.176.221.220"],
+  origin: [ process.env.FRONTEND_URL, 'https://eligor.web.id', 'http://localhost:5173', "16.176.221.220"],
   credentials: true
 }));
 app.use(express.json({ limit: '1mb' }))
+app.use(cookieParser())
 app.use(rateLimit({ windowMs: 60 * 1000, max: 100 }))
 app.disable('x-powered-by')
 
@@ -30,6 +34,6 @@ app.use('/api/rekomendasi', rekomendasiRoutes)
 app.use('/api/riwayat', historyRoutes)
 
 const PORT = process.env.PORT || 8080
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(3000, () => {
   console.log('Server running on port 3000');
 });

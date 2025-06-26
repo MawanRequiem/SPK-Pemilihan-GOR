@@ -1,5 +1,7 @@
 const db = require('../db')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken') 
+require('dotenv').config()
 
 // Simpan user baru dengan password hash, role default "user"
 exports.register = async (req, res) => {
@@ -29,6 +31,10 @@ exports.register = async (req, res) => {
   }
 }
 
+
+const JWT_SECRET = process.env.JWT_SECRET || 'jwt_rahasia_anda'
+const JWT_EXPIRES_IN = '2h'
+
 exports.login = async (req, res) => {
   const { email, password } = req.body
   try {
@@ -39,16 +45,28 @@ exports.login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password_hash)
     if (!valid) return res.status(401).json({ error: 'Password salah' })
 
-    res.json({
-      user_id: user.id,
+    const payload = {
+      id: user.id,
       role: user.role,
-      nama_lengkap: user.nama_lengkap,
-      message: 'Login berhasil'
+      nama: user.nama_lengkap,
+      email: user.email
+    }
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+
+    // Set cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      maxAge: 2 * 60 * 60 * 1000 // 2 jam
     })
+
+    res.json({ message: 'Login berhasil', role: user.role }) // kirim role utk redirect
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 }
+
 
 exports.saveSurvey = async (req, res) => {
   const {
@@ -138,16 +156,25 @@ exports.getUserById = async (req, res) => {
 
 // PATCH /api/user/update/:id
 exports.updateProfile = async (req, res) => {
-  const { id } = req.params
-  const { nama_lengkap, email, provinsi, kota, kecamatan, lokasi_lat, lokasi_lng } = req.body
+  const userId = req.user.id // ✅ dari token, bukan dari URL
+  const {
+    nama_lengkap,
+    email,
+    provinsi,
+    kota,
+    kecamatan,
+    lokasi_lat,
+    lokasi_lng
+  } = req.body
 
   try {
     await db.query(
       `UPDATE users 
        SET nama_lengkap = $1, email = $2, provinsi = $3, kota = $4, kecamatan = $5, lokasi_lat = $6, lokasi_lng = $7
        WHERE id = $8`,
-      [nama_lengkap, email, provinsi, kota, kecamatan, lokasi_lat, lokasi_lng, id]
+      [nama_lengkap, email, provinsi, kota, kecamatan, lokasi_lat, lokasi_lng, userId]
     )
+
     res.json({ message: 'Profil berhasil diperbarui' })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -156,18 +183,18 @@ exports.updateProfile = async (req, res) => {
 
 // PATCH /api/user/password/:id
 exports.changePassword = async (req, res) => {
-  const { id } = req.params
+  const userId = req.user.id // ✅ dari token, bukan dari URL
   const { oldPassword, newPassword } = req.body
 
   try {
-    const result = await db.query('SELECT password_hash FROM users WHERE id = $1', [id])
+    const result = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId])
     if (result.rows.length === 0) return res.status(404).json({ error: 'User tidak ditemukan' })
 
     const valid = await bcrypt.compare(oldPassword, result.rows[0].password_hash)
     if (!valid) return res.status(401).json({ error: 'Password lama salah' })
 
     const hashed = await bcrypt.hash(newPassword, 10)
-    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, id])
+    await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashed, userId])
 
     res.json({ message: 'Password berhasil diubah' })
   } catch (err) {
@@ -218,4 +245,31 @@ exports.getLatestRanking = async (req, res) => {
     console.error('[getLatestRanking error]', err)
     res.status(500).json({ error: err.message })
   }
+}
+
+exports.getMe = (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'User tidak ditemukan di token' })
+  }
+
+  res.json({
+    id: req.user.id,
+    email: req.user.email,
+    role: req.user.role,
+    nama_lengkap: req.user.nama_lengkap,
+    lokasi_lat: req.user.lokasi_lat, // ditambahkan
+    lokasi_lng: req.user.lokasi_lng, // ditambahkan
+    provinsi: req.user.provinsi,
+    kota: req.user.kota,
+    kecamatan: req.user.kecamatan
+  })
+}
+
+exports.logout = (req, res) => {
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'Lax', // atau 'Lax' jika ingin lebih fleksibel
+    secure: process.env.NODE_ENV === 'production'
+  })
+  res.json({ message: 'Berhasil logout' })
 }

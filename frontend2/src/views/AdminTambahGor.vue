@@ -185,7 +185,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
-import axios from 'axios'
+import axios from '../axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 
@@ -285,28 +285,33 @@ const hitungSkor = (jumlah, max) => {
 let map = null
 let marker = null
 
-onMounted(() => {
-  // Cek login
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
-  if (!user || user.role !== 'admin') {
+onMounted(async () => {
+  try {
+    const res = await axios.get('/api/me', { withCredentials: true })
+    const user = res.data
+    if (!user || user.role !== 'admin') {
+      return router.push('/login')
+    }
+
+    if (window.google && window.google.maps) {
+      const center = { lat: latitude.value, lng: longitude.value }
+      map = new google.maps.Map(document.getElementById('map'), {
+        center,
+        zoom: 14
+      })
+      marker = new google.maps.Marker({
+        map,
+        position: center,
+        draggable: true
+      })
+      marker.addListener('dragend', () => {
+        const pos = marker.getPosition()
+        latitude.value = pos.lat()
+        longitude.value = pos.lng()
+      })
+    }
+  } catch (err) {
     router.push('/login')
-  }
-  if (window.google && window.google.maps) {
-    const center = { lat: latitude.value, lng: longitude.value }
-    map = new google.maps.Map(document.getElementById('map'), {
-      center,
-      zoom: 14
-    })
-    marker = new google.maps.Marker({
-      map,
-      position: center,
-      draggable: true
-    })
-    marker.addListener('dragend', () => {
-      const pos = marker.getPosition()
-      latitude.value = pos.lat()
-      longitude.value = pos.lng()
-    })
   }
 })
 
@@ -320,16 +325,13 @@ watch(searchQuery, (val) => {
 
 const cariLokasi = async (query) => {
   try {
-    // Ganti key-mu sesuai kebutuhan
-    const res = await axios.get('https://maps.googleapis.com/maps/api/geocode/json', {
-      params: {
-        address: query,
-        key: 'AIzaSyA1M9zulCG74UZI0Q0_G9SPK0jAhjDroVg'
-      }
+    const res = await axios.get('/api/maps/geocode', {
+      params: { query }
     })
-    if (res.data.status !== 'OK') { hasilPencarian.value = []; return }
-    hasilPencarian.value = res.data.results
-  } catch (err) { toast.error('Gagal mencari lokasi: ' + err.message) }
+    hasilPencarian.value = res.data.results || []
+  } catch (err) {
+    toast.error('Gagal mencari lokasi: ' + err.message)
+  }
 }
 
 const pilihLokasi = (result) => {
@@ -345,12 +347,9 @@ const pilihLokasi = (result) => {
 }
 
 // =============== SUBMIT FORM ==============
-const admin = JSON.parse(localStorage.getItem('user') || '{}')
-const createdBy = admin.user_id || null
 const submitForm = async () => {
   try {
-    if (!createdBy) return toast.error('Admin tidak dikenali')
-    await axios.post('/api/admin/gor/tambahgor', {
+    const res = await axios.post('/api/admin/gor/tambahgor', {
       nama: nama.value,
       rating: rating.value,
       hargaSewa: hargaSewa.value,
@@ -361,9 +360,9 @@ const submitForm = async () => {
       longitude: longitude.value,
       alamat: alamatTerpilih.value,
       kota: kota.value,
-      provinsi: provinsi.value,
-      createdBy
-    })
+      provinsi: provinsi.value
+    }, { withCredentials: true })
+
     toast.success('GOR berhasil ditambahkan!')
     router.push('/admin')
   } catch (err) {
@@ -374,10 +373,16 @@ const submitForm = async () => {
 
 // ========== LOGOUT ==========
 function handleLogout() {
-  localStorage.removeItem('user')
-  router.push('/login')
+  axios.post('/api/logout', {}, { withCredentials: true })
+    .then(() => {
+      router.push('/login')
+    })
+    .catch(() => {
+      router.push('/login')
+    })
 }
 </script>
+
 
 <style scoped>
 /* Sidebar/Sidebar-Link/Active-Imitate Dashboard */

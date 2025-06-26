@@ -337,13 +337,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '../axios'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
 const router = useRouter()
 const user = JSON.parse(localStorage.getItem('user') || '{}')
-const userId = user.user_id
+const userId = ref(null)
 const sidebarOpen = ref(false)
 
 // Reactive data
@@ -452,11 +452,22 @@ const pertanyaan = [
   }
 ]
 
+const fetchUser = async () => {
+  try {
+    const res = await axios.get('/api/me', { withCredentials: true })
+    userId.value = res.data.id
+    // Setelah userId berhasil didapat, baru fetch lainnya:
+    await fetchSurvey()
+    await fetchRanking()
+    await fetchGORList()
+  } catch (err) {
+    toast.error('Gagal mengambil data pengguna')
+  }
+}
+
 onMounted(() => {
   setDateTime()
-  fetchSurvey()
-  fetchRanking()
-  fetchGORList()
+  fetchUser()
 })
 
 const setDateTime = () => {
@@ -467,7 +478,7 @@ const setDateTime = () => {
 
 const fetchSurvey = async () => {
   try {
-    const res = await axios.get(`/api/preferensi/${userId}`)
+    const res = await axios.get(`/api/preferensi/${userId.value}`)
     if (res.data.found) {
       sudahSurvey.value = true
       const data = res.data.data
@@ -489,7 +500,7 @@ const fetchSurvey = async () => {
 
 const fetchRanking = async () => {
   try {
-    const res = await axios.get(`/api/rekomendasi/ranking/${userId}`)
+    const res = await axios.get(`/api/rekomendasi/ranking/${userId.value}`)
     if (res.data && res.data.ranking) {
       lastRanking.value = res.data.ranking
       lastRankingDate.value = res.data.tanggal
@@ -554,7 +565,7 @@ const preferensiDisplay = computed(() => {
 
 const submitSurvey = async () => {
   try {
-    const payload = { user_id: userId, ...jawaban.value }
+    const payload = { user_id: userId.value, ...jawaban.value }
     const res = await axios.post('/api/preferensi', payload)
     toast.success(res.data.message || 'Preferensi berhasil disimpan')
     showModal.value = false
@@ -565,10 +576,16 @@ const submitSurvey = async () => {
   }
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('user')
-  router.push('/login')
+const handleLogout = async () => {
+  try {
+    await axios.post('/api/logout', null, { withCredentials: true })
+    localStorage.removeItem('user') // kalau kamu nyimpan cache
+    router.push('/login') // arahkan kembali ke halaman login
+  } catch (err) {
+    toast.error('Gagal logout')
+  }
 }
+
 </script>
 
 <style scoped>
