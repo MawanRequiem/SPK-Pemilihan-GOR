@@ -555,7 +555,7 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '../axios'
 import Chart from 'chart.js/auto'
 import { useToast } from 'vue-toastification';
 
@@ -577,8 +577,8 @@ const hitungSkor = (jumlah, max) => {
 };
 
 // Ambil data admin dari localStorage
-const user = JSON.parse(localStorage.getItem('user') || '{}')
-const adminName = user.nama_lengkap || 'Admin'
+const user = ref({})
+const adminName = computed(() => user.value.nama_lengkap || 'Admin')
 
 const daftarGOR = ref([])
 const loading = ref(true)
@@ -699,8 +699,13 @@ const closeMobileMenu = () => {
   isMobileMenuOpen.value = false
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('user')
+const handleLogout = async () => {
+  try {
+    await axios.post('/api/logout', {}, { withCredentials: true })
+  } catch (err) {
+    console.error('Logout error:', err)
+  }
+  localStorage.removeItem('user') // opsional, bersihkan jika sebelumnya pernah dipakai
   router.push('/login')
 }
 
@@ -710,6 +715,16 @@ const formatRupiah = (amount) => {
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleString('id-ID')
+}
+
+const fetchUser = async () => {
+  try {
+    const res = await axios.get('/api/me', { withCredentials: true })
+    user.value = res.data
+  } catch (err) {
+    toast.error('Gagal memuat data admin. Silakan login ulang.')
+    router.push('/login')
+  }
 }
 
 const fetchGOR = async () => {
@@ -1068,6 +1083,7 @@ const drawChart = (data) => {
 }
 
 onMounted(() => {
+  fetchUser()
   fetchGOR()
   fetchDSSStats()
   fetchTotalUsers()

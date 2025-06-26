@@ -104,7 +104,7 @@
 import { ref, onMounted } from 'vue'
 import AOS from 'aos'
 import 'aos/dist/aos.css'
-import axios from 'axios'
+import axios from '../axios'
 import { useRouter } from 'vue-router'
 
 const email = ref('')
@@ -117,8 +117,9 @@ const handleLogin = async () => {
     const { data } = await axios.post('/api/login', {
       email: email.value,
       password: password.value
-    })
-    localStorage.setItem('user', JSON.stringify(data))
+    }, { withCredentials: true }) // ⬅️ penting
+
+    // Arahkan sesuai role
     if (data.role === 'admin') {
       router.push('/admin')
     } else {

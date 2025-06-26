@@ -21,6 +21,11 @@ exports.updateGOR = async (req, res) => {
   const { nama_gor, rating, harga_sewa, jumlah_lapangan } = req.body
 
   try {
+    // Keamanan: pastikan hanya admin
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Akses ditolak: bukan admin' })
+    }
+
     // Cek apakah GOR exists
     const checkGOR = await db.query('SELECT id_gor FROM gor WHERE id_gor = $1', [id])
     if (checkGOR.rows.length === 0) {
@@ -37,7 +42,6 @@ exports.updateGOR = async (req, res) => {
       return res.status(409).json({ error: 'GOR dengan nama tersebut sudah ada' })
     }
 
-    // Update GOR
     const result = await db.query(`
       UPDATE gor 
       SET nama_gor = $1, rating = $2, harga_sewa = $3, jumlah_lapangan = $4, updated_at = NOW()
@@ -60,17 +64,17 @@ exports.deleteGOR = async (req, res) => {
   const { id } = req.params
 
   try {
-    // Cek apakah GOR exists
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Akses ditolak: bukan admin' })
+    }
+
     const checkGOR = await db.query('SELECT id_gor FROM gor WHERE id_gor = $1', [id])
     if (checkGOR.rows.length === 0) {
       return res.status(404).json({ error: 'GOR tidak ditemukan' })
     }
 
-    // Delete related data first (fasilitas, hasil_rekomendasi, etc.)
     await db.query('DELETE FROM fasilitas WHERE id_gor = $1', [id])
     await db.query('DELETE FROM hasil_rekomendasi WHERE id_gor = $1', [id])
-    
-    // Delete GOR
     await db.query('DELETE FROM gor WHERE id_gor = $1', [id])
 
     res.json({ message: 'GOR berhasil dihapus' })
@@ -79,6 +83,7 @@ exports.deleteGOR = async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 }
+
 
 // Ambil histori penggunaan DSS
 exports.getDSSHistory = async (req, res) => {

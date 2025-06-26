@@ -333,11 +333,11 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import axios from 'axios'
+import axios from '../axios'
 import { useToast } from 'vue-toastification'
 
 const user = JSON.parse(localStorage.getItem('user') || '{}')
-const userId = user.user_id
+const userId = ref(null)
 const history = ref([])
 const openIndex = ref(null)
 const searchQuery = ref('')
@@ -381,14 +381,21 @@ const lastSearchDate = computed(() => {
   return formatDate(latest.waktu_submit)
 })
 
-onMounted(async () => {
+const fetchUser = async () => {
   try {
-    const res = await axios.get(`/api/riwayat/${userId}`)
-    history.value = res.data.history
+    const res = await axios.get('/api/me', { withCredentials: true })
+    userId.value = res.data.id
+    // Fetch histori di sini
+    const historyRes = await axios.get(`/api/riwayat/${userId.value}`)
+    history.value = historyRes.data.history
   } catch (err) {
-    toast.error('Gagal memuat histori')
+    toast.error('Gagal memuat data pengguna dan histori')
   }
-})
+}
+
+onMounted(fetchUser)
+
+
 
 const toggle = (i) => {
   openIndex.value = openIndex.value === i ? null : i
@@ -436,10 +443,16 @@ const getTopScore = (rekomendasi) => {
   return Math.max(...rekomendasi.map(r => r.skor))
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('user')
-  // Navigate to login
+const handleLogout = async () => {
+  try {
+    await axios.post('/api/logout', null, { withCredentials: true })
+    localStorage.removeItem('user') // kalau kamu nyimpan cache
+    router.push('/login') // arahkan kembali ke halaman login
+  } catch (err) {
+    toast.error('Gagal logout')
+  }
 }
+
 </script>
 
 <style scoped>

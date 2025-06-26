@@ -187,13 +187,13 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import axios from '../axios'
 import { useToast } from 'vue-toastification'
 
 const router = useRouter()
 const toast = useToast()
 
-const userId = JSON.parse(localStorage.getItem('user') || '{}')?.user_id
+const userId = ref(null) // Ubah ke reactive ref
 const user = ref({})
 const password = ref({ old: '', new1: '', new2: '' })
 const searchQuery = ref('')
@@ -217,12 +217,25 @@ watch(searchQuery, async (val) => {
   }
 })
 
-onMounted(async () => {
-  if (!userId) return router.push('/login')
+const fetchUser = async () => {
   try {
-    const res = await axios.get(`/api/${userId}`)
-    user.value = res.data
-    setTimeout(initMap, 500) // better delay to ensure dom ready
+    const res = await axios.get('/api/me', { withCredentials: true })
+    userId.value = res.data.id
+    user.value = res.data // Simpan semua info user
+  } catch (err) {
+    toast.error('Gagal memuat data pengguna')
+    console.log(err)
+    router.push('/login')
+  }
+}
+
+onMounted(async () => {
+  await fetchUser()
+  if (!userId.value) return
+
+  try {
+    // Data user sudah ada dari fetchUser(), jadi tak perlu fetch lagi
+    setTimeout(initMap, 500)
   } catch (err) {
     toast.error('Gagal mengambil data user')
   }
@@ -266,7 +279,7 @@ const pilihLokasi = (lokasi) => {
 
 const updateProfile = async () => {
   try {
-    await axios.patch(`/api/update/${userId}`, user.value)
+    await axios.patch(`/api/update`, user.value)
     toast.success('Profil berhasil diperbarui!')
   } catch (err) {
     toast.error('Gagal update: ' + err.response?.data?.error)
@@ -277,7 +290,7 @@ const ubahPassword = async () => {
   if (password.value.new1 !== password.value.new2)
     return toast.error('Konfirmasi password tidak cocok')
   try {
-    await axios.patch(`/api/password/${userId}`, {
+    await axios.patch(`/api/password`, {
       oldPassword: password.value.old,
       newPassword: password.value.new1
     })
@@ -288,10 +301,16 @@ const ubahPassword = async () => {
   }
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('user')
-  router.push('/login')
+const handleLogout = async () => {
+  try {
+    await axios.post('/api/logout', null, { withCredentials: true })
+    localStorage.removeItem('user') // kalau kamu nyimpan cache
+    router.push('/login') // arahkan kembali ke halaman login
+  } catch (err) {
+    toast.error('Gagal logout')
+  }
 }
+
 </script>
 
 <style scoped>

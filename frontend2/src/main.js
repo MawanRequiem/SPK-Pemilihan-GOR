@@ -9,5 +9,6 @@ import Toast from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 
 
+
 AOS.init()
 createApp(App).use(router).use(Toast).mount('#app')

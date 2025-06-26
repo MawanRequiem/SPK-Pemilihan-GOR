@@ -445,15 +445,16 @@
 
 <script setup>
 import { onMounted, ref, computed } from 'vue'
-import axios from 'axios'
+import axios from '../axios'
 import { useToast } from 'vue-toastification'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const toast = useToast()
 const loading = ref(true)
-const debugMode = ref(false) // Set to true for debugging
-const userId = JSON.parse(localStorage.getItem('user') || '{}')?.user_id
+const debugMode = ref(false)
+
+const userId = ref(null)
 const userProfile = ref({ lokasi_lat: null, lokasi_lng: null })
 const sidebarOpen = ref(false)
 
@@ -463,47 +464,72 @@ const hasil = ref([])
 const hari = ref('')
 const jam = ref('')
 const sortBy = ref('default')
-const hariList = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu']
+const hariList = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']
 
-// Generate jam list from 1-24
-const jamList = computed(() => {
-  const jams = []
-  for (let i = 1; i <= 24; i++) {
-    jams.push({
-      value: i,
-      label: `${i.toString().padStart(2, '0')}:00`
-    })
-  }
-  return jams
-})
-
-// Filter states
 const filterKota = ref('')
 const filterProvinsi = ref('')
 const jarakRange = ref('')
 const customJarak = ref(null)
 
-onMounted(async () => {
-  if (!userId) return router.push('/login')
-  try {
-    const res = await axios.get(`/api/${userId}`)
-    userProfile.value = res.data
-    await loadGOR()
-  } catch (error) {
-    console.error('Error loading user profile:', error)
-    toast.error('Gagal mengambil profil user')
-  } finally {
-    loading.value = false
+const jamList = computed(() =>
+  Array.from({ length: 24 }, (_, i) => ({
+    value: i + 1,
+    label: `${String(i + 1).padStart(2, '0')}:00`
+  }))
+)
+
+const uniqueKota = computed(() =>
+  [...new Set(gorList.value.map(g => g.kota).filter(Boolean))].sort()
+)
+const uniqueProvinsi = computed(() =>
+  [...new Set(gorList.value.map(g => g.provinsi).filter(Boolean))].sort()
+)
+const maxJarak = computed(() => {
+  if (jarakRange.value === 'custom') {
+    return customJarak.value ? customJarak.value * 1000 : null
+  }
+  return jarakRange.value ? parseInt(jarakRange.value) : null
+})
+
+const sortedGors = computed(() => {
+  let filtered = gorList.value.filter(gor => {
+    if (filterKota.value && gor.kota !== filterKota.value) return false
+    if (filterProvinsi.value && gor.provinsi !== filterProvinsi.value) return false
+    if (maxJarak.value && gor.jarak_meter > maxJarak.value) return false
+    return true
+  })
+
+  switch (sortBy.value) {
+    case 'jarak':
+      return filtered.sort((a, b) => a.jarak_meter - b.jarak_meter)
+    case 'harga':
+      return filtered.sort((a, b) => a.harga_per_jam - b.harga_per_jam)
+    case 'nama':
+      return filtered.sort((a, b) => a.nama_gor.localeCompare(b.nama_gor))
+    default:
+      return filtered
   }
 })
+
+const fetchUser = async () => {
+  try {
+    const res = await axios.get('/api/me', { withCredentials: true })
+    userId.value = res.data.id
+    userProfile.value = res.data
+  } catch (err) {
+    toast.error('Gagal mengambil data user, silakan login ulang')
+    router.push('/login')
+  }
+}
 
 const loadGOR = async () => {
   try {
     const res = await axios.get('/api/admin/gor')
-    gorList.value = res.data
+    gorList.value = Array.isArray(res.data) ? res.data : res.data.data || []
+    console.log('GOR API response:', res.data)
     await enrichJarak()
+    loading.value = false
   } catch (error) {
-    console.error('Error loading GOR data:', error)
     toast.error('Gagal mengambil data GOR')
   }
 }
@@ -511,8 +537,6 @@ const loadGOR = async () => {
 const enrichJarak = async () => {
   const { lokasi_lat: lat, lokasi_lng: lng } = userProfile.value
   if (!lat || !lng) {
-    console.warn('User location not available, skipping distance calculation')
-    // Set default distance for all GORs
     gorList.value.forEach(gor => {
       gor.jarak_meter = 0
       gor.jarak_km = '0.0'
@@ -523,116 +547,37 @@ const enrichJarak = async () => {
   for (const gor of gorList.value) {
     try {
       if (!gor.latitude || !gor.longitude) {
-        console.warn(`GOR ${gor.nama_gor} missing coordinates`)
         gor.jarak_meter = 0
         gor.jarak_km = '0.0'
         continue
       }
 
       const r = await axios.get('/api/maps/distance', {
-        params: { 
-          originLat: lat, 
-          originLng: lng, 
-          destLat: gor.latitude, 
-          destLng: gor.longitude 
+        params: {
+          originLat: lat,
+          originLng: lng,
+          destLat: gor.latitude,
+          destLng: gor.longitude
         }
       })
-      
+
       const distance = r.data.distance || 0
       gor.jarak_meter = distance
       gor.jarak_km = (distance / 1000).toFixed(1)
-    } catch (error) {
-      console.error(`Error calculating distance for GOR ${gor.nama_gor}:`, error)
+    } catch {
       gor.jarak_meter = 0
       gor.jarak_km = '0.0'
     }
   }
 }
 
-// Computed properties for unique values
-const uniqueKota = computed(() => {
-  return [...new Set(gorList.value.map(g => g.kota).filter(Boolean))].sort()
-})
-
-const uniqueProvinsi = computed(() => {
-  return [...new Set(gorList.value.map(g => g.provinsi).filter(Boolean))].sort()
-})
-
-// Lanjutan dari script setup di atas...
-
-const maxJarak = computed(() => {
-  if (jarakRange.value === 'custom') {
-    return customJarak.value ? customJarak.value * 1000 : null
-  }
-  return jarakRange.value ? parseInt(jarakRange.value) : null
-})
-
-// Filter and sort GORs
-const sortedGors = computed(() => {
-  let filtered = gorList.value.filter(gor => {
-    // Filter by city
-    if (filterKota.value && gor.kota !== filterKota.value) return false
-    
-    // Filter by province
-    if (filterProvinsi.value && gor.provinsi !== filterProvinsi.value) return false
-    
-    // Filter by distance
-    if (maxJarak.value && gor.jarak_meter > maxJarak.value) return false
-    
-    return true
-  })
-
-  // Apply sorting
-  switch (sortBy.value) {
-    case 'jarak':
-      return filtered.sort((a, b) => (a.jarak_meter || 0) - (b.jarak_meter || 0))
-    case 'harga':
-      return filtered.sort((a, b) => (a.harga_per_jam || 0) - (b.harga_per_jam || 0))
-    case 'nama':
-      return filtered.sort((a, b) => a.nama_gor.localeCompare(b.nama_gor))
-    default:
-      return filtered
-  }
-})
-
-const canCalculate = computed(() => {
-  return selectedGors.value.length > 0 && hari.value && jam.value
-})
-
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('id-ID').format(amount)
-}
-
-const formatScore = (score) => {
-  return parseFloat(score).toFixed(4)
-}
-
-const selectAll = () => {
-  selectedGors.value = sortedGors.value.map(gor => gor.id_gor)
-}
-
-const deselectAll = () => {
-  selectedGors.value = []
-}
-
-const toggleSelect = (gorId) => {
-  const index = selectedGors.value.indexOf(gorId)
-  if (index > -1) {
-    selectedGors.value.splice(index, 1)
-  } else {
-    selectedGors.value.push(gorId)
-  }
-}
-
 const validateGorData = (gorData) => {
   return gorData.map(gor => ({
     ...gor,
-    // Ensure all numeric fields are valid numbers
-    harga_per_jam: isNaN(gor.harga_per_jam) ? 0 : parseFloat(gor.harga_per_jam) || 0,
-    jarak_meter: isNaN(gor.jarak_meter) ? 0 : parseFloat(gor.jarak_meter) || 0,
-    latitude: isNaN(gor.latitude) ? 0 : parseFloat(gor.latitude) || 0,
-    longitude: isNaN(gor.longitude) ? 0 : parseFloat(gor.longitude) || 0,
-    // Ensure required fields exist
+    harga_per_jam: parseFloat(gor.harga_per_jam) || 0,
+    jarak_meter: parseFloat(gor.jarak_meter) || 0,
+    latitude: parseFloat(gor.latitude) || 0,
+    longitude: parseFloat(gor.longitude) || 0,
     nama_gor: gor.nama_gor || 'Unknown GOR',
     kota: gor.kota || 'Unknown City',
     provinsi: gor.provinsi || 'Unknown Province'
@@ -644,65 +589,80 @@ const hitungRekomendasi = async () => {
     toast.error('Isi hari dan jam main terlebih dahulu')
     return
   }
-  
+
   const dataDipilih = gorList.value.filter(g => selectedGors.value.includes(g.id_gor))
   if (!dataDipilih.length) {
     toast.error('Pilih setidaknya satu GOR')
     return
   }
 
-  // Validate and clean data
   const validatedData = validateGorData(dataDipilih)
-  
   loading.value = true
+
   try {
-    console.log('Sending recommendation request with data:', {
-      user_id: userId,
+    const r = await axios.post('/api/rekomendasi', {
+      user_id: userId.value,
       metodeJarak: 'otomatis',
       waktuMain: { hari: hari.value, jam: parseInt(jam.value) },
       jarakManual: {},
       gorData: validatedData
     })
 
-    const r = await axios.post('/api/rekomendasi', {
-      user_id: userId,
-      metodeJarak: 'otomatis',
-      waktuMain: { hari: hari.value, jam: parseInt(jam.value) },
-      jarakManual: {},
-      gorData: validatedData
-    })
-    
-    console.log('Recommendation response:', r.data)
-    
     if (r.data.rekomendasi && Array.isArray(r.data.rekomendasi)) {
       hasil.value = r.data.rekomendasi
-      toast.success(`Rekomendasi berhasil dihitung! ${hasil.value.length} GOR diurutkan berdasarkan preferensi Anda.`)
-      
-      // Auto scroll ke hasil
+      toast.success(`Rekomendasi berhasil dihitung! ${hasil.value.length} GOR ditemukan.`)
+
       setTimeout(() => {
-        const hasilElement = document.querySelector('.bg-white.rounded-2xl.border.shadow-lg.p-6')
-        if (hasilElement) {
-          hasilElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
+        document.querySelector('.bg-white.rounded-2xl.border.shadow-lg.p-6')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        })
       }, 100)
     } else {
-      throw new Error('Invalid response format from server')
+      throw new Error('Format response server tidak valid')
     }
-    
   } catch (err) {
-    console.error('Error calculating recommendation:', err)
-    const errorMessage = err.response?.data?.error || err.message || 'Gagal menghitung rekomendasi'
-    toast.error(errorMessage)
+    toast.error(err.response?.data?.error || 'Gagal menghitung rekomendasi')
   } finally {
     loading.value = false
   }
 }
 
-const handleLogout = () => {
-  localStorage.removeItem('user')
-  router.push('/login')
+const selectAll = () => {
+  selectedGors.value = sortedGors.value.map(g => g.id_gor)
 }
+const deselectAll = () => {
+  selectedGors.value = []
+}
+const toggleSelect = (gorId) => {
+  const index = selectedGors.value.indexOf(gorId)
+  if (index > -1) selectedGors.value.splice(index, 1)
+  else selectedGors.value.push(gorId)
+}
+const formatCurrency = (amount) => new Intl.NumberFormat('id-ID').format(amount)
+const formatScore = (score) => parseFloat(score).toFixed(4)
+
+const canCalculate = computed(() => {
+  return selectedGors.value.length > 0 && hari.value && jam.value
+})
+
+const handleLogout = async () => {
+  try {
+    await axios.post('/api/logout', null, { withCredentials: true })
+    localStorage.removeItem('user') // kalau kamu nyimpan cache
+    router.push('/login') // arahkan kembali ke halaman login
+  } catch (err) {
+    toast.error('Gagal logout')
+  }
+}
+
+
+onMounted(async () => {
+  await fetchUser()
+  await loadGOR()
+})
 </script>
+
 
 <style scoped>
 .mobile-nav-slide-enter-active, .mobile-nav-slide-leave-active {
