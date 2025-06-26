@@ -31,18 +31,35 @@ const router = createRouter({
 
 // ✅ Tambahkan proteksi route di sini
 router.beforeEach(async (to, from, next) => {
-  const protectedRoutes = ['/dashboard', '/admin']
+  const adminRoutes = ['/admin', '/admin/tambah-gor', '/admin/riwayat']
+  const userRoutes = ['/dashboard', '/user/profil', '/user/rekomendasi', '/user/riwayat']
 
-  if (protectedRoutes.includes(to.path)) {
+  if ([...adminRoutes, ...userRoutes].includes(to.path)) {
     try {
-      await axios.get('/api/me', { withCredentials: true }) // pastikan backend punya GET /user/me pakai verifyToken
+      const res = await axios.get('/api/me', { withCredentials: true }) // res.data harus ada role
+      const role = res.data.role
+
+      // Jika route admin, tapi bukan admin
+      if (adminRoutes.includes(to.path) && role !== 'admin') {
+        return next('/login')
+      }
+
+      // Jika route user, tapi bukan user
+      if (userRoutes.includes(to.path) && role !== 'user') {
+        return next('/login')
+      }
+
+      // Lolos verifikasi role
       next()
     } catch (err) {
+      // Token invalid atau belum login
       next('/login')
     }
   } else {
+    // Public routes (/, /login, /register)
     next()
   }
 })
+
 
 export default router
