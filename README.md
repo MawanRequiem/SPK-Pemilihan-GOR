@@ -10,16 +10,10 @@ A full-stack web-based Decision Support System (DSS) to help users select the mo
 - [Features](#features)
 - [DIA Method Overview](#dia-method-overview)
 - [System Architecture](#system-architecture)
-- [Installation](#installation)
-- [Usage](#usage)
 - [Frontend Pages](#frontend-pages)
 - [API Endpoints](#api-endpoints)
-- [Configuration](#configuration)
 - [Dependencies](#dependencies)
 - [Examples](#examples)
-- [Troubleshooting](#troubleshooting)
-- [Contributors](#contributors)
-- [License](#license)
 
 ---
 
