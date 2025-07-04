@@ -144,14 +144,14 @@ npm install
 
 ### 1. User Dashboard Page
 
-[!User Dashboard Page](./assets/UserDashboard.png)
+![User Dashboard Page](./assets/UserDashboard.png)
 
 ### 2. Admin Dashboard Page
 
-[!Admin Dashboard Page](./assets/AdminDashboard.png)
+![Admin Dashboard Page](./assets/AdminDashboard.png)
 
 ### 3. Calculate Recomendation Page
 
-[!User Rekomendasi Page](./assets/Rekomendasi.png)
+![User Rekomendasi Page](./assets/Rekomendasi.png)
 
 ---
